@@ -1,0 +1,398 @@
+unit UGraph;
+
+interface
+
+uses UOkno,graph,dos;
+
+const
+  HPanel = 13;
+  SmeshKn = 13;
+  SmVnKn = 3;
+  ConTime = 50;
+  ConStart = 50;
+  HPan = 20;
+  ShagMax = 100;
+  ShMeny = 100;
+  VsMeny = 12;
+
+procedure OpenGr;
+Procedure CloseGr;
+procedure ClrGr;
+procedure PaintOkno(Okno:POkno);
+procedure PaintPanel(Root:POkno);
+Procedure PaintMeny(Root:PMeny; x,y:word; k:boolean);
+function ViborMeny(Root:PMeny; x,y:word):PMeny;
+Procedure PaintRamka(x1,y1,x2,y2:word);
+Procedure ClearRamka(x1,y1,x2,y2:word);
+
+var
+  GrMaxX,GrMaxY:word;
+  Buff : record
+         H:array[1..2,1..480] of byte;
+         W:array[1..2,1..640] of byte;
+         end;
+
+implementation
+
+procedure OpenGr;
+Var grDriver : Integer;
+      grMode : Integer;
+     ErrCode : Integer;
+
+Begin
+ grDriver:=Detect;
+ InitGraph(grDriver, grMode, 'f:\tp\bgi');
+ ErrCode:=GraphResult;
+ If ErrCode <> grOk Then
+    WriteLn('Ошибка инициализации графики:', GraphErrorMsg(ErrCode));
+
+ GrMaxX:=GetMaxX;
+ GrMaxY:=GetMaxY;
+End;
+
+Procedure CloseGr;
+  begin
+  CloseGraph;
+  end;
+
+procedure ClrGr;
+  begin
+  Cleardevice;
+  end;
+
+procedure PaintOkno(Okno:POkno);
+  var
+    i:1..3;
+  begin
+  If Okno^.kvad<>3 then
+  begin
+  SetFillStyle(1,Black);
+  SetColor(Yellow);
+  Bar(Okno^.x0,Okno^.y0,Okno^.x0+Okno^.xh,Okno^.y0+Okno^.yh);
+  Rectangle(Okno^.x0,Okno^.y0,Okno^.x0+Okno^.xh,Okno^.y0+Okno^.yh);
+  Line(Okno^.x0,Okno^.y0+HPanel,Okno^.x0+Okno^.xh,Okno^.y0+HPanel);
+  SetFillStyle(1,Blue);
+  FloodFill(Okno^.x0+1,Okno^.y0+1,Yellow);
+  For i:=1 to 3 do
+    Line(Okno^.x0+Okno^.xh-SmeshKn*i,Okno^.y0,Okno^.x0+Okno^.xh-SmeshKn*i,Okno^.y0+HPanel);
+  Line(Okno^.x0+Okno^.xh-SmeshKn*3+SmVnKn,Okno^.y0+HPanel-SmVnKn,Okno^.x0+Okno^.xh-SmeshKn*2-SmVnKn,Okno^.y0+HPanel-SmVnKn);
+  if Okno^.kvad=1 then
+    Rectangle(Okno^.x0+Okno^.xh-SmeshKn*2+SmVnKn,Okno^.y0+SmVnKn,Okno^.x0+Okno^.xh-SmeshKn-SmVnKn,Okno^.y0+HPanel-SmVnKn);
+  if Okno^.Kvad=2 then
+    begin
+    Rectangle(Okno^.x0+Okno^.xh-SmeshKn*2+SmVnKn*2,Okno^.y0+SmVnKn,Okno^.x0+Okno^.xh-SmeshKn-SmVnKn,Okno^.y0+HPanel-SmVnKn*2);
+    Rectangle(Okno^.x0+Okno^.xh-SmeshKn*2+SmVnKn,Okno^.y0+SmVnKn*2,Okno^.x0+Okno^.xh-SmeshKn-SmVnKn*2,Okno^.y0+HPanel-SmVnKn);
+    end;
+  Line(Okno^.x0+Okno^.xh-SmeshKn+SmVnKn,Okno^.y0+SmVnKn,Okno^.x0+Okno^.xh-SmVnKn,Okno^.y0+HPanel-SmVnKn);
+  Line(Okno^.x0+Okno^.xh-SmeshKn+SmVnKn,Okno^.y0+HPanel-SmVnKn,Okno^.x0+Okno^.xh-SmVnKn,Okno^.y0+SmVnKn);
+  OutTextXY(Okno^.x0+Okno^.xh div 20,Okno^.y0+HPanel div 4,Okno^.zag);
+  end;
+  end;
+
+procedure PaintPanel(Root:POkno);
+  var
+    LastOkno:POkno;
+    n,i:word;
+    ShagX:Real;
+  begin
+  n:=0;
+  LastOkno:=Root;
+  While LastOkno^.next<>nil do
+    begin
+    LastOkno:=LastOkno^.next;
+    inc(n);
+    end;
+  if n=0 then
+    ShagX:=0
+  else
+    ShagX:=(GetMaxX-ConTime-ConStart)/n;
+  If ShagX>ShagMax then ShagX:=ShagMax;
+  SetFillStyle(1,Black);
+  SetColor(Yellow);
+  Bar(0,GetMaxY-HPan,GetMaxX,GetMaxY);
+  Rectangle(0,GetMaxY-HPan,GetMaxX,GetMaxY);
+  Line(ConStart,GetMaxY-HPan,ConStart,GetMaxY);
+  Line(GetMaxX-ConTime,GetMaxY-HPan,GetMaxX-ConTime,GetMaxY);
+  OutTextXY(trunc(ConStart/2-20),Trunc(GetMaxY-HPan/2-2),'Start');
+  For i:=1 to n do
+    Line(ConStart+Trunc(ShagX*i),GetMaxY-HPan,ConStart+Trunc(ShagX*i),GetMaxY);
+  i:=0;
+  LastOkno:=Root;
+  While LastOkno^.next<>nil do
+    begin
+    LastOkno:=LastOkno^.next;
+    OutTextXY(ConStart+Trunc(ShagX*i)+Trunc(ShagX) div 2-length(LastOkno^.zag)*4,Trunc(GetMaxY-HPan/2-2),LastOkno^.zag);
+    inc(i);
+    end;
+  end;
+
+Procedure PaintMeny(Root:PMeny; x,y:word; k:boolean);
+  var
+    LastMeny:PMeny;
+    n,i:byte;
+  begin
+  Root^.pokaz:=true;
+  Root^.x0:=x;
+  Root^.y0:=y;
+  Root^.i:=1;
+  LastMeny:=root;
+  if k then
+    n:=0
+  else
+    n:=1;
+  While LastMeny^.next<>nil do
+    begin
+    Inc(n);
+    LastMeny:=LastMeny^.next;
+    end;
+  if y+n*VsMeny>=GrMaxY-HPan Then
+     Root^.y0:=y-n*VsMeny;
+
+  SetFillStyle(1,Black);
+  SetColor(Yellow);
+  if n<>0 then
+    if y+n*VsMeny<GrMaxY-HPan Then
+      begin
+      Bar(x,y,x+ShMeny,y+n*VsMeny);
+      Rectangle(x,y,x+ShMeny,y+n*VsMeny);
+      end
+    else
+      begin
+      Bar(x,y,x+ShMeny,y-n*VsMeny);
+      Rectangle(x,y,x+ShMeny,y-n*VsMeny);
+      end;
+
+  LastMeny:=Root;
+  i:=1;
+  for i:=1 to n do
+    begin
+    if k then
+      LastMeny:=LastMeny^.next;
+    if y+n*VsMeny<GrMaxY-HPan Then
+      begin
+      Line(x,y+i*VsMeny,x+ShMeny,y+i*VsMeny);
+      OutTextXY(x+8,y+(i-1)*VsMeny+2,LastMeny^.par);
+      if LastMeny^.dop<>nil then
+        OutTextXY(x+ShMeny-8,y+(i-1)*VsMeny+2,'');
+      end
+    else
+      begin
+      Line(x,y-i*VsMeny,x+ShMeny,y-i*VsMeny);
+      OutTextXY(x+8,y-n*VsMeny+(i-1)*VsMeny+2,LastMeny^.par);
+      if LastMeny^.dop<>nil then
+        OutTextXY(x+ShMeny-8,y-n*VsMeny+(i-1)*VsMeny+2,'');
+      end;
+    if not k then
+      LastMeny:=LastMeny^.next;
+    end;
+  end;
+
+Procedure HideMeny(Root:PMeny; x,y:word; k:boolean);
+  var
+    LastMeny:PMeny;
+    n,i:byte;
+  begin
+  Root^.pokaz:=false;
+  Root^.x0:=x;
+  Root^.y0:=y;
+  Root^.i:=1;
+  LastMeny:=root;
+  if k then
+    n:=0
+  else
+    n:=1;
+  While LastMeny^.next<>nil do
+    begin
+    Inc(n);
+    LastMeny:=LastMeny^.next;
+    end;
+  if y+n*VsMeny>=GrMaxY-HPan Then
+     Root^.y0:=y-n*VsMeny;
+
+  SetFillStyle(1,Black);
+  SetColor(Yellow);
+  if n<>0 then
+  if y+n*VsMeny<GrMaxY-HPan Then
+    Bar(x,y,x+ShMeny,y+n*VsMeny)
+  else
+    Bar(x,y,x+ShMeny,y-n*VsMeny);
+  LastMeny:=Root;
+  for i:=1 to n do
+    begin
+    if k then
+      LastMeny:=LastMeny^.next;
+    if LastMeny^.dop<>nil then
+      begin
+      HideMeny(LastMeny^.dop,Root^.x0+ShMeny+5,Root^.y0+(i-1)*VsMeny,false);
+      end;
+    if not k then
+      LastMeny:=LastMeny^.next;
+    end;
+
+  end;
+
+function ViborMeny(Root:PMeny; x,y:word):PMeny;
+   var
+    n,i,k:byte;
+    LastMeny,NextMeny:PMeny;
+    dopmeny,kol:boolean;
+  begin
+  n:=0;
+  LastMeny:=root{^.next};
+  nextMeny:=root;
+  dopMeny:=false;
+  kol:=false;
+  While (X>=nextMeny^.x0+ShMeny+5) and (LastMeny^.next<>nil) do
+    begin
+    DopMeny:=true;
+    if not kol then
+      LastMeny:=LastMeny^.next;
+    kol:=false;
+    While (LastMeny^.next<>nil) and (LastMeny^.dop=nil) do
+       LastMeny:=LastMeny^.next;
+    if (Lastmeny^.Dop<>nil) and (Lastmeny^.Dop^.pokaz) then
+      begin
+      NextMeny:=LastMeny^.dop;
+      LastMeny:=LastMeny^.dop;
+      kol:=true;
+      n:=1;
+      end;
+    end;
+  LastMeny:=NextMeny;
+  If LastMeny^.next<>nil then
+  begin
+  NextMeny:=LastMeny;
+  While NextMeny^.next<>nil do
+    begin
+    inc(n);
+    NextMeny:=NextMeny^.next;
+    end;
+  if  (x>=LastMeny^.x0) and (y>=LastMeny^.y0) and
+      (x<=LastMeny^.x0+ShMeny) and (y<=LastMeny^.y0+n*VsMeny)then
+    begin
+    NextMeny:=LastMeny;
+    if not dopMeny then
+      k:=1
+    else
+      k:=2;
+    while k<=LastMeny^.i do
+      begin
+      NextMeny:=NextMeny^.next;
+      inc(k);
+      end;
+    SetFillStyle(1,Black);
+    Bar(LastMeny^.x0,LastMeny^.y0+(LastMeny^.i-1)*VsMeny,LastMeny^.x0+ShMeny,LastMeny^.y0+LastMeny^.i*VsMeny);
+    Rectangle(LastMeny^.x0,LastMeny^.y0+(LastMeny^.i-1)*VsMeny,LastMeny^.x0+ShMeny,LastMeny^.y0+LastMeny^.i*VsMeny);
+    OutTextXY(LastMeny^.x0+8,LastMeny^.y0+(LastMeny^.i-1)*VsMeny+2,NextMeny^.par);
+    if NextMeny^.dop<>nil then
+      begin
+      NextMeny^.dop^.pokaz:=false;
+      OutTextXY(LastMeny^.x0+ShMeny-8,LastMeny^.y0+(LastMeny^.i-1)*VsMeny+2,'');
+      HideMeny(NextMeny^.dop,LastMeny^.x0+ShMeny+5,LastMeny^.y0+(LastMeny^.i-1)*VsMeny,false);
+      end;
+
+    NextMeny:=LastMeny;
+    if not dopMeny then
+      i:=0
+    else
+      i:=1;
+    while y>=LastMeny^.y0+i*VsMeny do
+      begin
+      inc(i);
+      NextMeny:=NextMeny^.next;
+      end;
+    SetFillStyle(1,Blue);
+    Bar(LastMeny^.x0,LastMeny^.y0+(i-1)*VsMeny,LastMeny^.x0+ShMeny,LastMeny^.y0+i*VsMeny);
+    Rectangle(LastMeny^.x0,LastMeny^.y0+(i-1)*VsMeny,LastMeny^.x0+ShMeny,LastMeny^.y0+i*VsMeny);
+    OutTextXY(LastMeny^.x0+8,LastMeny^.y0+(i-1)*VsMeny+2,NextMeny^.par);
+    ViborMeny:=Nextmeny;
+    if NextMeny^.dop<>nil then
+      begin
+      NextMeny^.dop^.pokaz:=true;
+      OutTextXY(LastMeny^.x0+ShMeny-8,LastMeny^.y0+(i-1)*VsMeny+2,'');
+      PaintMeny(NextMeny^.dop,LastMeny^.x0+ShMeny+5,LastMeny^.y0+(i-1)*VsMeny,false);
+      end;
+
+    LastMeny^.i:=i;
+    end;
+  end;
+  end;
+
+Procedure PaintRamka(x1,y1,x2,y2:word);
+  var
+   regs:registers;
+   i:word;
+  begin
+  regs.ah:=$0D;
+  regs.bh:=$00;
+  For i:=0 to x2-x1 do
+    begin
+    regs.dx:=y1;
+    regs.cx:=x1+i;
+    intr($10,regs);
+    buff.h[1,i]:=regs.al;
+    end;
+  For i:=0 to x2-x1 do
+    begin
+    regs.dx:=y2;
+    regs.cx:=x1+i;
+    intr($10,regs);
+    buff.h[2,i]:=regs.al;
+    end;
+  For i:=0 to (y2-y1) do
+    begin
+    regs.dx:=y1+i;
+    regs.cx:=x1;
+    intr($10,regs);
+    buff.w[1,i]:=regs.al;
+    end;
+  For i:=0 to (y2-y1) do
+    begin
+    regs.dx:=y1+i;
+    regs.cx:=x2;
+    intr($10,regs);
+    buff.w[2,i]:=regs.al;
+    end;
+  SetColor(Yellow);
+  Rectangle(x1,y1,x2,y2);
+  end;
+
+Procedure ClearRamka(x1,y1,x2,y2:word);
+  var
+   regs:registers;
+   i:word;
+  begin
+  regs.ah:=$0C;
+  regs.bh:=$00;
+  For i:=0 to x2-x1 do
+    begin
+    regs.dx:=y1;
+    regs.cx:=x1+i;
+    regs.al:=buff.h[1,i];
+    intr($10,regs);
+    end;
+  For i:=0 to x2-x1 do
+    begin
+    regs.dx:=y2;
+    regs.cx:=x1+i;
+    regs.al:=buff.h[2,i];
+    intr($10,regs);
+    end;
+  For i:=0 to (y2-y1) do
+    begin
+    regs.dx:=y1+i;
+    regs.cx:=x1;
+    regs.al:=buff.w[1,i];
+    intr($10,regs);
+    end;
+  For i:=0 to (y2-y1) do
+    begin
+    regs.dx:=y1+i;
+    regs.cx:=x2;
+    regs.al:=buff.w[2,i];
+    intr($10,regs);
+    end;
+  end;
+
+
+end.
